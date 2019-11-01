@@ -11,7 +11,9 @@ from scipy.misc import imread
 ## Load data
 #x,y = np.loadtxt(sys.argv[1], unpack=True)
 
-N_FREQ_BINS = 50
+N_FREQ_BINS = 400
+NORMALIZE_TO_AVERAGE = True         # usually we care about the inhomogeneities as compared to avg. brightness
+NOISE_BACKGROUND_CUTOFF = 4.0       # the higher, the more points will be cut
 imname = sys.argv[1]
 SEM_image_sizes  = {                     # magnifications
     'E':    [11740.0e-6, 8627.0e-6],              # 10       ×
@@ -37,6 +39,8 @@ im_pmtpreamp_code = imname[6]
 
 
 im = imread(imname)
+#print('np.max(im)',np.max(im))
+if np.max(im)>256: im = im.astype(float)/256  # naive detection of 16-bit images
 fim = np.fft.fftshift(np.fft.fft2(im))
 fim2 = np.abs(fim**2)
 
@@ -60,6 +64,13 @@ for freq_bin in freq_bins:
     bin_averages.append(bin_average)
 
 ## ==== Outputting ====
+#print((bin_averages > np.min(bin_averages)*2))
+bin_filter = (bin_averages > np.min(bin_averages)*NOISE_BACKGROUND_CUTOFF)
+freq_bins = np.array(freq_bins)[bin_filter]
+bin_averages = np.array(bin_averages)[bin_filter]
+
+if NORMALIZE_TO_AVERAGE: bin_averages = bin_averages / np.mean(im)
+
 np.savetxt(sys.argv[1]+"_RPSDF.dat", np.array([freq_bins[1:], bin_averages[1:]]).T)
 
 #plt.imshow(xyfreq_binned)
