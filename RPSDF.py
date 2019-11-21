@@ -8,12 +8,26 @@ import numpy as np
 from scipy.constants import c, hbar, pi
 from scipy.misc import imread
 
-## Load data
-#x,y = np.loadtxt(sys.argv[1], unpack=True)
+## User settings
+#?? PSD of electric field E(t) is: spectrum I(f) with units W/Hz = (h/e) * W/eV  since 1 Hz = 1 J / h = 1 eV * h/e
+#??           can be converted into a function of wavelength:  I'(λ) = I(f) * dλ/df   with  λ[nm] = c * 1e9 / f[Hz]    and   dλ/df = - (c*1e9)/f²
+#?? PSD of e.g. time-domain force F(t) -> spectrum G(f) with units N²/Hz
+#??           can be converted into a function of period  t=1/f  by 
+#?? PSD of sample morphology is: ... in units [nm⁴]
+# Shall PSD be expressed by decibels?
+# In 2D signal, pink noise has k**(-0.5) dependency in FT modulus (i.e. amplitude spectrum), thus RPSD has k**(1 + (-0.5)*2) dependency and is flat
+# Some links:
+#   http://www.nanophys.kth.se/nanophys/facilities/nfl/afm/icon/bruker-help/Content/SoftwareGuide/Offline/AnalysisFunct/PowerSpectralDens.htm
+#       PSD = RMS²;    "isotropic power spectral density"  iPSD := P/2πf(Δf) 
+#   https://community.sw.siemens.com/s/article/what-is-a-power-spectral-density-psd 
+# 
+ 
 
 N_FREQ_BINS = 400
-NORMALIZE_TO_AVERAGE = True         # usually we care about the inhomogeneities as compared to avg. brightness
-NOISE_BACKGROUND_CUTOFF = 4.0       # the higher, the more points will be cut
+NORMALIZE_TO_AVERAGE = True             # usually we care about the inhomogeneities as compared to avg. brightness
+CONVERT_SPFREQ_TO_UM = True             # readers may find it more understandable to invert x-axis into metres
+NOISE_BACKGROUND_CUTOFF = 4.0           # the higher, the more points will be cut
+SAVE_PLOT            = True            # diagnostic PNG
 imname = sys.argv[1]
 SEM_image_sizes  = {                     # magnifications
     'E':    [11740.0e-6, 8627.0e-6],              # 10       ×
@@ -39,7 +53,6 @@ im_pmtpreamp_code = imname[6]
 
 
 im = imread(imname)
-#print('np.max(im)',np.max(im))
 if np.max(im)>256: im = im.astype(float)/256  # naive detection of 16-bit images
 fim = np.fft.fftshift(np.fft.fft2(im))
 fim2 = np.abs(fim**2)
@@ -59,8 +72,7 @@ bin_averages = []
 for freq_bin in freq_bins:
     bin_mask     = np.isclose(xyfreq_binned, freq_bin)
     bin_px_count = np.sum(bin_mask)
-    bin_average  = np.sum(fim2[bin_mask])/bin_px_count * im_xsize * im_ysize  # multiply by px area, since considering energy!
-    #print('binning', freq_bin, ' [m^-1] with # of px = ', bin_px_count, ' with average PSD = ', bin_average)
+    bin_average  = np.sum(fim2[bin_mask])/bin_px_count * im_xsize * im_ysize  # multiply by px area, since we are considering energy!
     bin_averages.append(bin_average)
 
 ## ==== Outputting ====
@@ -70,21 +82,21 @@ freq_bins = np.array(freq_bins)[bin_filter]
 bin_averages = np.array(bin_averages)[bin_filter]
 
 if NORMALIZE_TO_AVERAGE: bin_averages = bin_averages / np.mean(im)
+if CONVERT_SPFREQ_TO_UM:
+    xlabel, ylabel = u'feature size (μm)', u''
+    xlabel, ylabel = u'spatial frequency (1/m)', u''
 
-np.savetxt(sys.argv[1]+"_RPSDF.dat", np.array([freq_bins[1:], bin_averages[1:]]).T)
+np.savetxt(sys.argv[1]+"_RPSDF.dat", 
+        np.array([freq_bins[1:], bin_averages[1:]]).T, 
+        header = ('\t') )
 
-#plt.imshow(xyfreq_binned)
-plt.plot(freq_bins[1:], bin_averages[1:])
-plt.yscale('log')
-plt.xscale('log')
 
-## Finish the plot + save 
-plt.xlabel(u"spatial frequency (1/m)"); 
-plt.ylabel(u"spectral power (A. U.)"); 
-plt.title(sys.argv[1]); 
-plt.grid()
-#plt.legend(prop={'size':10}, loc='upper right')
-plt.savefig(sys.argv[1]+"_RPSDF.png", bbox_inches='tight')
-
-plt.plot(freq_bins[1:], bin_averages[1:])
-
+if SAVE_PLOT: 
+    plt.plot(freq_bins[1:], bin_averages[1:])
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.xlabel(u"feature size (μm)" if CONVERT_SPFREQ_TO_UM else u"spatial frequency (1/m)")
+    plt.ylabel(u"spectral power (A. U.)")
+    plt.title(sys.argv[1]); 
+    plt.grid()
+    plt.savefig(sys.argv[1]+"_RPSDF.png", bbox_inches='tight')
