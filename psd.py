@@ -21,6 +21,10 @@ from scipy.misc import imread
 #       PSD = RMS²;    "isotropic power spectral density"  iPSD := P/2πf(Δf) 
 #   https://community.sw.siemens.com/s/article/what-is-a-power-spectral-density-psd 
 # 
+# TODOs: 
+#   read the img magnif from metadata
+#   average FFT without the horizontal line inhomog.
+#   process multiple imgs & stitch the PSD curves seamlessly
  
 
 N_FREQ_BINS = 400
@@ -44,7 +48,7 @@ SEM_image_sizes  = {                     # magnifications
     'P':    [  2.348e-6, 1.7254e-6],              # 50000    ×
     }
 
-PMT_preamp_codes  = {'A':1, 'B':4, 'C':4**2, 'D':4**3, 'E':4**4, 'F':4**5}   # PMT scales roughly exponentially
+# unused: PMT_preamp_codes  = {'A':1, 'B':4, 'C':4**2, 'D':4**3, 'E':4**4, 'F':4**5}   # PMT scales roughly exponentially
 
 im_size_code = imname[3].upper()
 im_xsize, im_ysize = SEM_image_sizes[im_size_code]        # unit: meter
