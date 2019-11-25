@@ -22,16 +22,16 @@ from scipy.misc import imread
 #   https://community.sw.siemens.com/s/article/what-is-a-power-spectral-density-psd 
 # 
 # TODOs: 
-#   read the img magnif from metadata
 #   average FFT without the horizontal line inhomog.
 #   process multiple imgs & stitch the PSD curves seamlessly
+#   treat vertically cropped imgs correctly
  
 
 N_FREQ_BINS = 400
 NORMALIZE_TO_AVERAGE = True             # usually we care about the inhomogeneities as compared to avg. brightness
 CONVERT_SPFREQ_TO_UM = True             # readers may find it more understandable to invert x-axis into metres
 NOISE_BACKGROUND_CUTOFF = 4.0           # the higher, the more points will be cut
-SAVE_PLOT            = True            # diagnostic PNG
+SAVE_PLOT            = 0            # diagnostic PNG
 imname = sys.argv[1]
 SEM_image_sizes  = {                     # magnifications
     'E':    [11740.0e-6, 8627.0e-6],              # 10       ×
@@ -66,6 +66,7 @@ xfreq = np.fft.fftshift(np.fft.fftfreq(fim2.shape[1], d=im_xsize/fim2.shape[1]))
 yfreq = np.fft.fftshift(np.fft.fftfreq(fim2.shape[0], d=im_ysize/fim2.shape[0])) * 2*np.pi
 mesh = np.meshgrid(xfreq,yfreq)
 xyfreq = np.abs(mesh[0] + 1j*mesh[1])
+xyfreq[:,xyfreq.shape[1]//2-1:xyfreq.shape[1]//2+1] = -1 # filtering
 max_xyfreq = np.max(xyfreq)
 
 freq_bin_width = max_xyfreq/N_FREQ_BINS
