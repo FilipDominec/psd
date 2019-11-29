@@ -47,13 +47,26 @@ SEM_image_sizes  = {                     # magnifications
     'O':    [   5.87e-6, 4.3135e-6],              # 20000    ×
     'P':    [  2.348e-6, 1.7254e-6],              # 50000    ×
     }
+WLI_image_sizes  = {
+        '5x': [1400e-6, 1050e-6], 
+        '20x': [350e-6, 262e-6], 
+        '50x': [140e-6, 105e-6], 
+        }
 
 # unused: PMT_preamp_codes  = {'A':1, 'B':4, 'C':4**2, 'D':4**3, 'E':4**4, 'F':4**5}   # PMT scales roughly exponentially
 
 im_size_code = imname[3].upper()
-im_xsize, im_ysize = SEM_image_sizes[im_size_code]        # unit: meter
-im_kv_code = imname[4:6]
-im_pmtpreamp_code = imname[6]
+try:
+    im_xsize, im_ysize = SEM_image_sizes[im_size_code]        # unit: meter
+    #im_kv_code = imname[4:6]
+    #im_pmtpreamp_code = imname[6]
+except KeyError:
+    for k,v in WLI_image_sizes.items():
+        if k in imname:
+            im_xsize, im_ysize = WLI_image_sizes[k]        
+            print('detected size', im_xsize, im_ysize)
+            break
+
 
 
 im = imread(imname)
