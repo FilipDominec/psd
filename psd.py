@@ -28,10 +28,9 @@
 N_FREQ_BINS = 400
 NORMALIZE_TO_AVERAGE = False             # usually we care about the inhomogeneities as compared to avg. brightness
 CONVERT_SPFREQ_TO_UM = False             # readers may find it more understandable to invert x-axis into metres
-NOISE_BACKGROUND_CUTOFF = 0.0           # the higher, the more points will be cut
+NOISE_BACKGROUND_CUTOFF = 4.0           # the higher, the more points will be cut
 SAVE_PLOT            = 0                # diagnostic PNG
 SEM_image_sizes  = {                    # magnifications
-    'D':    [50e3, 50e3],              # 10       ×
     'E':    [11740.0e-6, 8627.0e-6],              # 10       ×
     'F':    [ 5870.0e-6, 4313.5e-6],              # 20       ×
     'G':    [ 2348.0e-6, 1725.4e-6],              # 50       ×
@@ -123,7 +122,7 @@ for imname in sys.argv[1:]:
     else:
         xlabel, ylabel = u'spatial frequency $k$ (1/m)', u'spectral power (A.U.)'
 
-    print(freq_bins, bin_averages)
+    #print(freq_bins, bin_averages)
     with open(imname+'_RPSDF.dat', 'w')   as of: of.write('# ' + '\t'.join([xlabel,ylabel]) + '\n')
     with open(imname+'_RPSDF.dat', 'a+b') as of: np.savetxt(of, np.array([freq_bins, bin_averages]).T, delimiter='\t')
 
