@@ -45,23 +45,40 @@ SEM_image_sizes  = {                    # magnifications
     'O':    [   5.87e-6, 4.3135e-6],              # 20000    ×
     'P':    [  2.348e-6, 1.7254e-6],              # 50000    ×
     }
+WLI_image_sizes  = {
+        '5x': [1400e-6, 1050e-6], 
+        '20x': [350e-6, 262e-6], 
+        '50x': [140e-6, 105e-6], 
+        }
+
+# unused: PMT_preamp_codes  = {'A':1, 'B':4, 'C':4**2, 'D':4**3, 'E':4**4, 'F':4**5}   # PMT scales roughly exponentially
 
 ## Import common moduli
-import sys, os, time
+import sys, os, time, imageio
 if SAVE_PLOT: import matplotlib.pyplot as plt
 import numpy as np
 from scipy.constants import c, hbar, pi
 from scipy.misc import imread
 
 for imname in sys.argv[1:]:
-    print('processing '+imname)
     im_size_code = imname[3].upper()
-    im_xsize, im_ysize = SEM_image_sizes[im_size_code]        # unit: meter
+    try:
+        im_xsize, im_ysize = SEM_image_sizes[im_size_code]        # unit: meter
+        #im_kv_code = imname[4:6]
+        #im_pmtpreamp_code = imname[6]
+    except KeyError:
+        for k,v in WLI_image_sizes.items():
+            if k in imname:
+                im_xsize, im_ysize = WLI_image_sizes[k]        
+                print('detected size', im_xsize, im_ysize)
+                break
+    print('processing '+imname+' guessing its real dimensions as ',im_xsize*1e6, '×', im_ysize*1e6, 'μm')
     #im_kv_code = imname[4:6]
     # unused: PMT_preamp_codes  = {'A':1, 'B':4, 'C':4**2, 'D':4**3, 'E':4**4, 'F':4**5}   # PMT scales roughly exponentially
     #im_pmtpreamp_code = imname[6]
 
-    im = imread(imname)
+
+    im = imageio.imread(imname)
     #im = np.random.rand(*im.shape) #white noise test: the fractal properties of white noise should lead to almost overlapping curves
     if np.max(im)>256: im = im.astype(float)/256  # naive detection of 16-bit images
     fim = np.fft.fftshift(np.fft.fft2(im))
@@ -77,10 +94,10 @@ for imname in sys.argv[1:]:
     mesh = np.meshgrid(xfreq,yfreq)
     xyfreq = np.abs(mesh[0] + 1j*mesh[1])
     xyfreq[:,xyfreq.shape[1]//2-1:xyfreq.shape[1]//2+1] = -1 # filtering against horizontal line noise (needed even in SEM)
-    max_xyfreq = np.max(xyfreq)
+    max_xyfreq = max(np.max(xfreq), np.max(yfreq))
 
     freq_bin_width = max_xyfreq/N_FREQ_BINS
-    freq_bins =  np.linspace(0, max_xyfreq, N_FREQ_BINS+1)
+    freq_bins = np.linspace(0, max_xyfreq, N_FREQ_BINS+1)
     xyfreq_binned = np.round(xyfreq/freq_bin_width)*freq_bin_width
 
     bin_averages = []
@@ -105,7 +122,6 @@ for imname in sys.argv[1:]:
         freq_bins = 1e6 * 2*np.pi / freq_bins
     else:
         xlabel, ylabel = u'spatial frequency $k$ (1/m)', u'spectral power (A.U.)'
-        #freq_bins = freq_bins # / (1e6 * 2*np.pi)
 
     print(freq_bins, bin_averages)
     with open(imname+'_RPSDF.dat', 'w')   as of: of.write('# ' + '\t'.join([xlabel,ylabel]) + '\n')
