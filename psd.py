@@ -11,7 +11,7 @@ from imageio import imread
 
 ## TODO use settings:
 N_FREQ_BINS = 100
-NORMALIZE_TO_AVERAGE = 0 #False             # usually we care about the inhomogeneities as compared to avg. brightness
+NORMALIZE_TO_AVERAGE = True #False             # usually we care about the inhomogeneities as compared to avg. brightness
 CONVERT_SPFREQ_TO_UM = False             # readers may find it more understandable to invert x-axis into metres
 NOISE_BACKGROUND_CUTOFF = 4.0           # the higher, the more points will be cut
 SAVE_PLOT            = 0                # diagnostic PNG
@@ -115,8 +115,7 @@ for imname in sys.argv[1:]:
         bin_averages *= freq_bins**2
         freq_bins = 1e6 * 2*np.pi / freq_bins
     else:
-        xlabel = u'spatial frequency $k$ (1/m)', normlabel + u'spectral power (A.U.)'
-        ylabel
+        xlabel, ylabel = u'spatial frequency $k$ (1/m)', normlabel + u'spectral power (A.U.)'
 
     freq_bins, bin_averages = freq_bins[1:], bin_averages[1:]  ## optionally strip some confused datapoints from PSD
 
