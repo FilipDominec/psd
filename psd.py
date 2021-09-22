@@ -104,14 +104,19 @@ for imname in sys.argv[1:]:
         bin_averages.append(bin_average)
 
     ## == postprocessing ==
-    if NORMALIZE_TO_AVERAGE: bin_averages = bin_averages / np.mean(im)**2
+    if NORMALIZE_TO_AVERAGE: 
+        bin_averages = bin_averages / np.mean(im)**2
+        normlabel = 'normalized '
+    else:
+        normlabel = ''
     print('np.mean(im) = ', np.mean(im))
     if CONVERT_SPFREQ_TO_UM:
-        xlabel, ylabel = u'feature size (μm)', u'spectral power (A.U.)'
+        xlabel, ylabel = u'feature size (μm)',  normlabel + u'spectral power (A.U.)'
         bin_averages *= freq_bins**2
         freq_bins = 1e6 * 2*np.pi / freq_bins
     else:
-        xlabel, ylabel = u'spatial frequency $k$ (1/m)', u'spectral power (A.U.)'
+        xlabel = u'spatial frequency $k$ (1/m)', normlabel + u'spectral power (A.U.)'
+        ylabel
 
     freq_bins, bin_averages = freq_bins[1:], bin_averages[1:]  ## optionally strip some confused datapoints from PSD
 
@@ -120,13 +125,13 @@ for imname in sys.argv[1:]:
     # TODO with open(imname+'_RPSDF.dat', 'a+b') as of: np.savetxt(of, np.array([freq_bins, bin_averages]).T, delimiter='\t')
     np.savetxt(imname+"_RPSDF_notnorm.dat", np.array([freq_bins, bin_averages]).T)
     all_results_freq.append(freq_bins)
-    all_results_psd.append(all_results_psd)
+    all_results_psd.append(bin_averages)
 
 
 # finally plot them together
 
 for f,psd in zip(all_results_freq, all_results_psd):
-    plt.plot(freq_bins[1:], bin_averages[1:])
+    plt.plot(f, psd)
 plt.yscale('log')
 plt.xscale('log')
 
