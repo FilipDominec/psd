@@ -10,10 +10,10 @@ from imageio import imread
 
 
 ## TODO use settings:
-N_FREQ_BINS = 100
+N_FREQ_BINS = 500
 NORMALIZE_TO_AVERAGE = True #False             # usually we care about the inhomogeneities as compared to avg. brightness
 CONVERT_SPFREQ_TO_UM = False             # readers may find it more understandable to invert x-axis into metres
-NOISE_BACKGROUND_CUTOFF = 4.0           # the higher, the more points will be cut
+NOISE_BACKGROUND_CUTOFF = 2.0           # the higher, the more points will be cut
 SAVE_PLOT            = 0                # diagnostic PNG
 
 
@@ -89,11 +89,11 @@ for imname in sys.argv[1:]:
     yfreq = np.fft.fftshift(np.fft.fftfreq(fim2.shape[0], d=im_ysize/fim2.shape[0])) * 2*np.pi
     mesh = np.meshgrid(xfreq,yfreq)
     xyfreq = np.abs(mesh[0] + 1j*mesh[1])
-    max_xyfreq = np.max(xyfreq)
+    max_xyfreq = np.max(xyfreq/2)
 
     freq_bin_width = max_xyfreq/N_FREQ_BINS
     freq_bins =  np.linspace(0, max_xyfreq, N_FREQ_BINS+1)
-    xyfreq_binned = np.round(xyfreq/freq_bin_width)*freq_bin_width
+    xyfreq_binned = np.round((xyfreq/freq_bin_width))*freq_bin_width
 
     bin_averages = []
     for freq_bin in freq_bins:
@@ -101,7 +101,10 @@ for imname in sys.argv[1:]:
         bin_px_count = np.sum(bin_mask)
         bin_average  = np.sum(fim2[bin_mask])/bin_px_count * im_xsize * im_ysize  # multiply by px area, since considering energy!
         #print('binning', freq_bin, ' [m^-1] with # of px = ', bin_px_count, ' with average PSD = ', bin_average)
-        bin_averages.append(bin_average)
+        if bin_px_count:
+            bin_averages.append(bin_average)
+        else:
+            freq_bins.remove(freq_bin)
 
     ## == postprocessing ==
     if NORMALIZE_TO_AVERAGE: 
@@ -117,7 +120,13 @@ for imname in sys.argv[1:]:
     else:
         xlabel, ylabel = u'spatial frequency $k$ (1/m)', normlabel + u'spectral power (A.U.)'
 
-    freq_bins, bin_averages = freq_bins[1:], bin_averages[1:]  ## optionally strip some confused datapoints from PSD
+    # remove zero frequency, and all high frequencies where only noise can be expected
+    bin_filter = (bin_averages > np.min(bin_averages)* NOISE_BACKGROUND_CUTOFF) 
+    print(bin_averages)
+    print(np.min(bin_averages))
+    print(bin_filter)
+    freq_bins = np.array(freq_bins)[bin_filter][1:]
+    bin_averages = np.array(bin_averages)[bin_filter][1:]
 
     ## ==== Outputting ====
     # TODO with open(imname+'_RPSDF.dat', 'w')   as of: of.write('# ' + '\t'.join([xlabel,ylabel]) + '\n')
@@ -132,6 +141,7 @@ for imname in sys.argv[1:]:
 for f,psd in zip(all_results_freq, all_results_psd):
     plt.plot(f, psd)
 plt.yscale('log')
+plt.ylim(1e-6, 1e2)
 plt.xscale('log')
 
 ## Finish the plot + save 
