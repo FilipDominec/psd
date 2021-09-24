@@ -10,10 +10,9 @@ from imageio import imread
 
 
 ## TODO use settings:
-N_FREQ_BINS = 500
 NORMALIZE_TO_AVERAGE = True #False             # usually we care about the inhomogeneities as compared to avg. brightness
 CONVERT_SPFREQ_TO_UM = False             # readers may find it more understandable to invert x-axis into metres
-NOISE_BACKGROUND_CUTOFF = 2.0           # the higher, the more points will be cut
+NOISE_BACKGROUND_CUTOFF = 0 #2.0           # the higher, the more points will be cut
 SAVE_PLOT            = 0                # diagnostic PNG
 
 
@@ -48,7 +47,7 @@ def loadfile_SEM_XL30(imname):
         im_xsize, im_ysize = SEM_image_sizes[im_size_code]        # unit: meter
 
     im = imread(imname)
-    return im, im_xsize, im_ysize
+    return im/1000, im_xsize, im_ysize
 
 def loadfile_WLI(imname):
     WLI_image_sizes  = {
@@ -79,6 +78,7 @@ for imname in sys.argv[1:]:
         print(f'Processing {imname} as SEM XL30 image')
         im, im_xsize, im_ysize = loadfile_SEM_XL30(imname)
 
+    
     print('successfully loaded '+imname+', guessing its real dimensions as ',im_xsize*1e6, '×', im_ysize*1e6, 'μm')
 
     fim = np.fft.fftshift(np.fft.fft2(im))
@@ -91,11 +91,21 @@ for imname in sys.argv[1:]:
     xyfreq = np.abs(mesh[0] + 1j*mesh[1])
     max_xyfreq = np.max(xyfreq/2)
 
-    freq_bin_width = max_xyfreq/N_FREQ_BINS
-    freq_bins =  np.linspace(0, max_xyfreq, N_FREQ_BINS+1)
-    xyfreq_binned = np.round((xyfreq/freq_bin_width))*freq_bin_width
+    #freq_bin_width = max_xyfreq/N_FREQ_BINS
+    #freq_bins =  np.linspace(0, max_xyfreq, N_FREQ_BINS+1)
+    #xyfreq_binned = np.round((xyfreq/freq_bin_width))*freq_bin_width
 
-    bin_averages = []
+
+    N_FREQ_BINS = 0.3 * max(fim2.shape[0], fim2.shape[1])
+    #FEXP = 1 #.666
+    FEXP = .5 #.666
+    freq_bins =  np.linspace(0, max_xyfreq**FEXP, N_FREQ_BINS+1)**(1/FEXP)
+    print('FB', freq_bins)
+    xyfreq_binned = (np.round(((xyfreq/max_xyfreq)**(FEXP)*N_FREQ_BINS))/N_FREQ_BINS)**(1/FEXP)*max_xyfreq
+    #plt.imshow(xyfreq_binned)
+    #plt.show()
+
+    valid_freq_bins, bin_averages = [], []
     for freq_bin in freq_bins:
         bin_mask     = np.isclose(xyfreq_binned, freq_bin)
         bin_px_count = np.sum(bin_mask)
@@ -103,12 +113,12 @@ for imname in sys.argv[1:]:
         #print('binning', freq_bin, ' [m^-1] with # of px = ', bin_px_count, ' with average PSD = ', bin_average)
         if bin_px_count:
             bin_averages.append(bin_average)
-        else:
-            freq_bins.remove(freq_bin)
+            valid_freq_bins.append(freq_bin)
+    freq_bins = valid_freq_bins
 
     ## == postprocessing ==
     if NORMALIZE_TO_AVERAGE: 
-        bin_averages = bin_averages / np.mean(im)**2
+        bin_averages = bin_averages / np.mean(im)**2  /  (fim2.shape[1]*fim2.shape[0])**.25
         normlabel = 'normalized '
     else:
         normlabel = ''
@@ -141,7 +151,7 @@ for imname in sys.argv[1:]:
 for f,psd in zip(all_results_freq, all_results_psd):
     plt.plot(f, psd)
 plt.yscale('log')
-plt.ylim(1e-6, 1e2)
+#plt.ylim(1e-10, 1e0)
 plt.xscale('log')
 
 ## Finish the plot + save 
@@ -150,6 +160,6 @@ plt.ylabel(u"spectral power (A. U.)");  # TODO note if normalized
 plt.title(sys.argv[1]); 
 plt.grid()
 #plt.legend(prop={'size':10}, loc='upper right')
-plt.savefig(sys.argv[1]+"_RPSDF.png", bbox_inches='tight') # TODO wise choice of output dir
+plt.savefig(sys.argv[1]+"_RPSDF_fexp050.png", bbox_inches='tight') # TODO wise choice of output dir
 
 plt.plot(freq_bins[1:], bin_averages[1:])
